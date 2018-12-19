@@ -542,7 +542,7 @@ class TagsState extends State<Tags> with RouteAware {
             return Slider(
                 value: tags[keys[myIndex]][0].toDouble(),
                 min: 0.0,
-                divisions: length,
+                divisions: length > 0 ? length : null,
                 label: tags[keys[myIndex]][0].toString(),
                 max: length.toDouble(),
                 onChanged: (v) {
