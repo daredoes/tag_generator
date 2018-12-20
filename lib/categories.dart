@@ -7,6 +7,7 @@ import 'category.dart';
 import 'settings.dart';
 
 final _biggerFont = const TextStyle(fontSize: 18.0);
+final _biggestFont = const TextStyle(fontSize: 24.0);
 
 class Tags extends StatefulWidget {
   final RouteObserver routeObserver;
@@ -19,6 +20,7 @@ class TagsState extends State<Tags> with RouteAware {
   @override Tags get widget => super.widget;
   var tags = {};
   var activeTags = [];
+  var activeTagStrings = [];
   var suggestions;
   var settings = {};
 
@@ -48,22 +50,20 @@ class TagsState extends State<Tags> with RouteAware {
 
   String buildTags() {
     var tempTags = [];
-    activeTags.shuffle();
-    activeTags.forEach((tag) {
-      tags[tag][1].shuffle();
-      var length = tags[tag][0];
-      tempTags.addAll(tags[tag][1].sublist((tags[tag][1].length - length).toInt()));
+    tags.forEach((tag, values) {
+      values.forEach((content, status) {
+        if (status) tempTags.add(content);
+      });
     });
-    print(settings);
-    return settings['prefix'] + tempTags.join((settings['separator'] + settings['prefix']) ?? ', ');
+    var prefix = settings['prefix'] ?? "#";
+    var separator = settings['separator'] ?? ', ';
+    return prefix + tempTags.join(separator + prefix);
   }
-
-  
   
   @override
   Widget build(BuildContext context) {
     final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
-    Future<void> copyTags(tags, contxt) async {
+    Future<void> copyTags(tags) async {
       await Clipboard.setData(ClipboardData(
         text: tags
       ));
@@ -93,7 +93,7 @@ class TagsState extends State<Tags> with RouteAware {
           new FlatButton(
             child: new Text("Copy"),
             onPressed: () {
-              copyTags(tagString, context);
+              copyTags(tagString);
               Navigator.of(tagContext).pop();
             },
           ),
@@ -104,6 +104,12 @@ class TagsState extends State<Tags> with RouteAware {
     return Scaffold(
       key: _scaffoldKey,
       appBar: AppBar(
+        centerTitle: true,
+        leading: new IconButton(
+          icon: const Icon(Icons.add), onPressed: () {
+            editCategory(null);
+          },
+        ),
         title: Text('Tag Generator'),
         actions: <Widget>[      // Add 3 lines from here...
           new IconButton(icon: const Icon(Icons.settings), onPressed: goToSettings),
@@ -138,8 +144,16 @@ class TagsState extends State<Tags> with RouteAware {
   }
   void loadTagsAndStart() async {
     await loadTags();
-    tags.keys.forEach((key) {
-      if ( tags[key][0] > 0 && !activeTags.contains(key) ) activeTags.add(key);
+    tags.forEach((k, values) {
+      if (values != null) {
+        for ( var content in values.keys ) {
+          if (values[content]) {
+            activeTags.add(k);
+            break;
+          }
+        }
+      }
+      
     });
   }
 
@@ -180,12 +194,11 @@ class TagsState extends State<Tags> with RouteAware {
     )); 
   }
 
-  Widget tagCategory(String category) {
-    final bool active = activeTags.contains(category);
+  Widget tagCategory(String category, bool active, update) {
     return ListTile(
       title: Text(
         category,
-        style: _biggerFont,
+        style: _biggestFont,
       ),
       trailing: new Icon(   // Add the lines from here... 
         active ? Icons.favorite : Icons.favorite_border,
@@ -193,11 +206,7 @@ class TagsState extends State<Tags> with RouteAware {
       ),
       onTap: () {      // Add 9 lines from here...
         setState(() {
-          if (active) {
-            activeTags.remove(category);
-          } else {
-            activeTags.add(category);
-          }
+          update();  
         });
       },
       onLongPress: () {
@@ -206,48 +215,60 @@ class TagsState extends State<Tags> with RouteAware {
     );
   }
 
-  Widget _buildSuggestions() {
-    var keys = tags.keys.toList();
-    return ListView.builder(
-        padding: const EdgeInsets.all(16.0),
-        itemBuilder: /*1*/ (context, i) {
-          if (i == 0) {
-            return ListTile(
-              title: Text("Add New Category"),
-              onTap: createNewCategory,
-              );
-          }
-          if (i == 1) return Divider(); /*2*/
-          if (i % 3 == 1) return Divider();
-
-          final index = (i ~/ 3); /*3*/
-          if (index < keys.length && i % 3 == 2) {
-            
-            return tagCategory(keys[index]);
-          }
-          if (index <= keys.length && i % 3 == 0) {
-            final myIndex = index -1;
-            var length = tags[keys[myIndex]][1].length;
-            return Slider(
-                value: tags[keys[myIndex]][0].toDouble(),
-                min: 0.0,
-                divisions: length > 0 ? length : null,
-                label: tags[keys[myIndex]][0].toString(),
-                max: length.toDouble(),
-                onChanged: (v) {
-                  if (v > 0) {
-                    if (!activeTags.contains(keys[myIndex])) activeTags.add(keys[myIndex]);
-                  }
-                  if (v == 0) {
-                    if (activeTags.contains(keys[myIndex])) activeTags.remove(keys[myIndex]);
-                  }
-                  setState(() {
-                    tags[keys[myIndex]][0] = v;       
-                  });
-                  
-                },
-              );
-          }
+  Widget tagInCategory(String category, bool active, update) {
+    return ListTile(
+      title: Text(
+        category,
+        style: _biggerFont,
+      ),
+      leading: new Icon(   // Add the lines from here... 
+        active ? Icons.check_box : Icons.check_box_outline_blank,
+        color: active ? Colors.blue : Colors.blue,
+      ),
+      onTap: () {      // Add 9 lines from here...
+        setState(() {
+         update(); 
         });
+      },
+    );
+  }
+
+  Widget checkableList() {
+    var fields = <Widget>[];
+    tags.forEach((k, v) {
+      bool active = true;
+      for ( var content in v.keys ) {
+        if (!v[content]) {
+          active = false;
+          break;
+        }
+      }
+      void updateCategory() {
+        v.forEach((tag, status) {
+          tags[k][tag] = !active;
+        });
+      }
+      fields.add(tagCategory(k, active, updateCategory));
+      v.forEach((tag, status) {
+        void updateTag() {
+          tags[k][tag] = !tags[k][tag];
+        }
+        fields.add(tagInCategory(tag, status, updateTag));
+      });
+      fields.add(Divider());
+    });
+    return ListView.builder(
+      padding: const EdgeInsets.all(16.0),
+      itemBuilder: /*1*/ (context, i) {
+        if (i < fields.length) {
+          return fields[i];
+        }
+        
+      }
+    );
+  }
+
+  Widget _buildSuggestions() {
+    return checkableList();
   }
 }

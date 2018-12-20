@@ -83,9 +83,9 @@ class CategoryScreenState extends State<CategoryScreen> with RouteAware {
 
   void loadTagsAndStart() async {
     await loadTags();
-    if ( tags != null && tags.containsKey(widget.category) && tags[widget.category][1].length > 0 ) {
-      data = tags[widget.category][1];
-      data.forEach((tag) {
+    if ( tags != null && tags.containsKey(widget.category)) {
+      data = tags[widget.category];
+      data.forEach((tag, status) {
         if (tag != "") {
           fields.addAll(<Widget>[tagField(tag: tag), SizedBox(height: 24.0)]);
         }
@@ -107,23 +107,18 @@ class CategoryScreenState extends State<CategoryScreen> with RouteAware {
 
   void saveForm() {
     _formKey.currentState.save();
-    data = temporaryData.keys.toList();
+    data = temporaryData;
     var titleText = titleController.text;
     if ( titleText != "" && titleText != widget.category ) {
       tags.remove(widget.category);
-      tags[titleText] = [
-        tags.containsKey(titleText) && tags[titleText][0] < data.length ? tags[titleText][0] : data.length,
-         data];
+      tags[titleText] = data;
     } else if ( widget.category != null ) {
-      tags[widget.category] = [
-        tags.containsKey(widget.category) && tags[widget.category][0] < data.length ? tags[widget.category][0] : data.length,
-         data];
+      tags[widget.category] = data;
     }
   }
 
   void addBlankTag() async {
     setState(() {
-      
       fields.addAll(<Widget>[SizedBox(height: 24.0), tagField(tag: '')]);  
     });
   }
