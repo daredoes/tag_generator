@@ -57,20 +57,22 @@ class TagsState extends State<Tags> with RouteAware {
     });
     var prefix = settings['prefix'] ?? "#";
     var separator = settings['separator'] ?? ', ';
-    return prefix + tempTags.join(separator + prefix);
+    return tempTags.length > 0 ? prefix + tempTags.join(separator + prefix) : '';
   }
+
+  Future<void> copyTags(tags, key) async {
+      await Clipboard.setData(ClipboardData(
+        text: tags
+      ));
+      key.currentState.showSnackBar(SnackBar(
+        content: Text('Copied To Clipboard'),
+      ));
+    }
   
   @override
   Widget build(BuildContext context) {
     final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
-    Future<void> copyTags(tags) async {
-      await Clipboard.setData(ClipboardData(
-        text: tags
-      ));
-      _scaffoldKey.currentState.showSnackBar(SnackBar(
-        content: Text('Copied To Clipboard'),
-      ));
-    }
+    
 
     Widget tagAlert(tagContext){
       var tagString = buildTags();
@@ -93,7 +95,7 @@ class TagsState extends State<Tags> with RouteAware {
           new FlatButton(
             child: new Text("Copy"),
             onPressed: () {
-              copyTags(tagString);
+              copyTags(tagString, _scaffoldKey);
               Navigator.of(tagContext).pop();
             },
           ),
@@ -115,31 +117,7 @@ class TagsState extends State<Tags> with RouteAware {
           new IconButton(icon: const Icon(Icons.settings), onPressed: goToSettings),
         ],  
       ),
-      body: _buildSuggestions(),
-      floatingActionButton: new FloatingActionButton(
-        tooltip: 'Create',
-        child: Icon(Icons.refresh),
-        elevation: 2.0,
-        onPressed: () {
-          if (activeTags.length > 0) {
-            showDialog(
-              context: context,
-              builder: (BuildContext contxt) {
-                return tagAlert(context);
-              },
-            );
-          } else {
-            _scaffoldKey.currentState.showSnackBar(
-              SnackBar(
-                content: Text('Please select a category'),
-              )
-            );
-          }
-          
-          
-        },
-      ),
-      
+      body: _buildSuggestions(_scaffoldKey, copyTags),
     );
   }
   void loadTagsAndStart() async {
@@ -233,8 +211,18 @@ class TagsState extends State<Tags> with RouteAware {
     );
   }
 
-  Widget checkableList() {
+  Widget checkableList(key, copy) {
     var fields = <Widget>[];
+    var text = buildTags();
+      fields.add(
+        ListTile(
+          title: Text(text, style: _biggestFont),
+          onTap: text == '' ? null : () {
+            copy(text, key);
+          },
+        )
+      );
+    
     tags.forEach((k, v) {
       bool active = true;
       for ( var content in v.keys ) {
@@ -268,7 +256,7 @@ class TagsState extends State<Tags> with RouteAware {
     );
   }
 
-  Widget _buildSuggestions() {
-    return checkableList();
+  Widget _buildSuggestions(key, copy) {
+    return checkableList(key, copy);
   }
 }
