@@ -1,4 +1,4 @@
-package com.example.taggenerator;
+package work.daredoes.taggenerator;
 
 import android.os.Bundle;
 import io.flutter.app.FlutterActivity;

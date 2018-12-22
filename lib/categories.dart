@@ -145,7 +145,7 @@ class TagsState extends State<Tags> with RouteAware {
   Widget tagCategory(String category, bool active, update) {
     var totalTags = tags[category].length.toString();
     var activeTags = tags[category].values.where((status) {return status == true;}).length.toString();
-    var activeCount = "${activeTags}/${totalTags}";
+    var activeCount = totalTags + '/' + activeTags;
     return ListTile(
       title: Text(
         category,
