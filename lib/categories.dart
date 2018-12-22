@@ -77,17 +77,17 @@ class TagsState extends State<Tags> with RouteAware {
       key: _scaffoldKey,
       appBar: AppBar(
         centerTitle: true,
-        leading: new IconButton(
-          icon: const Icon(Icons.add), onPressed: () {
-            editCategory(null);
-          },
-        ),
         title: Text('Tag Generator'),
         actions: <Widget>[      // Add 3 lines from here...
           new IconButton(icon: const Icon(Icons.settings), onPressed: goToSettings),
         ],  
       ),
       body: _buildSuggestions(_scaffoldKey, copyTags),
+      floatingActionButton: FloatingActionButton(
+        child: new IconButton(icon: Icon(Icons.add), onPressed: () {
+          editCategory(null);
+        },),
+      ),
     );
   }
   void loadTagsAndStart() async {
@@ -145,7 +145,7 @@ class TagsState extends State<Tags> with RouteAware {
   Widget tagCategory(String category, bool active, update) {
     var totalTags = tags[category].length.toString();
     var activeTags = tags[category].values.where((status) {return status == true;}).length.toString();
-    var activeCount = totalTags + '/' + activeTags;
+    var activeCount = activeTags + '/' + totalTags;
     return ListTile(
       title: Text(
         category,
