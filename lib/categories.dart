@@ -73,36 +73,6 @@ class TagsState extends State<Tags> with RouteAware {
   Widget build(BuildContext context) {
     final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
     
-
-    Widget tagAlert(tagContext){
-      var tagString = buildTags();
-      return AlertDialog(
-        title: Text('Tags'),
-        content: Text(tagString),
-        actions: <Widget>[
-          new FlatButton(
-            child: new Text("Regenerate"),
-            onPressed: () {
-              Navigator.of(tagContext).pop();
-              showDialog(
-                context: context,
-                builder: (BuildContext contxt) {
-                  return tagAlert(tagContext);
-                },
-              );
-            },
-          ),
-          new FlatButton(
-            child: new Text("Copy"),
-            onPressed: () {
-              copyTags(tagString, _scaffoldKey);
-              Navigator.of(tagContext).pop();
-            },
-          ),
-          ],
-      );
-    }
-    
     return Scaffold(
       key: _scaffoldKey,
       appBar: AppBar(
@@ -173,14 +143,19 @@ class TagsState extends State<Tags> with RouteAware {
   }
 
   Widget tagCategory(String category, bool active, update) {
+    
+    var activeCount = tags[category].values.takeWhile((status) {return status == true;}).length.toString();
     return ListTile(
       title: Text(
         category,
         style: _biggestFont,
       ),
+      leading: Text(
+        activeCount
+      ),
       trailing: new Icon(   // Add the lines from here... 
-        active ? Icons.favorite : Icons.favorite_border,
-        color: active ? Colors.red : null,
+        active ? Icons.visibility : Icons.visibility_off,
+        color: active ? Colors.blue : null,
       ),
       onTap: () {      // Add 9 lines from here...
         setState(() {
@@ -224,25 +199,23 @@ class TagsState extends State<Tags> with RouteAware {
       );
     
     tags.forEach((k, v) {
-      bool active = true;
-      for ( var content in v.keys ) {
-        if (!v[content]) {
-          active = false;
-          break;
-        }
-      }
+      bool active = activeTags.contains(k);
       void updateCategory() {
-        v.forEach((tag, status) {
-          tags[k][tag] = !active;
-        });
+        if (active) {
+          activeTags.remove(k);
+        } else {
+          activeTags.add(k);
+        }
       }
       fields.add(tagCategory(k, active, updateCategory));
-      v.forEach((tag, status) {
-        void updateTag() {
-          tags[k][tag] = !tags[k][tag];
-        }
-        fields.add(tagInCategory(tag, status, updateTag));
-      });
+      if (active) {
+        v.forEach((tag, status) {
+          void updateTag() {
+            tags[k][tag] = !tags[k][tag];
+          }
+          fields.add(tagInCategory(tag, status, updateTag));
+        });
+      }
       fields.add(Divider());
     });
     return ListView.builder(
