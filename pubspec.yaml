@@ -20,6 +20,7 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^0.1.2
   flutter_launcher_icons: "^0.7.0"
+  flutter_slidable: ^0.4.9
 
 flutter_icons:
   image_path: "icon/icon.png" 

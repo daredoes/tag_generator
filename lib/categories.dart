@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'dart:convert';
 
 import 'category.dart';
@@ -72,7 +73,7 @@ class TagsState extends State<Tags> with RouteAware {
   @override
   Widget build(BuildContext context) {
     final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
-    
+    TextEditingController newTag = new TextEditingController();
     return Scaffold(
       key: _scaffoldKey,
       appBar: AppBar(
@@ -83,10 +84,41 @@ class TagsState extends State<Tags> with RouteAware {
         ],  
       ),
       body: _buildSuggestions(_scaffoldKey, copyTags),
-      floatingActionButton: FloatingActionButton(
-        child: new IconButton(icon: Icon(Icons.add), onPressed: () {
-          editCategory(null);
-        },),
+      floatingActionButton: new FloatingActionButton(
+        child: new Icon(Icons.add), onPressed: () {
+          //editCategory(null);
+          showDialog(
+            context: context,
+            builder: (BuildContext contxt) {
+              return AlertDialog(
+                title: Text('New Category'),
+                content: TextField(
+                  controller: newTag,
+                  onEditingComplete: () {
+                    addCategoryFromController(newTag);
+                    Navigator.of(contxt).pop();
+                  },
+                ),
+                actions: <Widget>[
+                  FlatButton(
+                    onPressed: () {
+                      Navigator.of(contxt).pop();
+                    },
+                    child: Text("Cancel"),
+                  ),
+                  FlatButton(
+                    child: Text("Save"),
+                    onPressed: () {
+                      addCategoryFromController(newTag);
+                      Navigator.of(contxt).pop();
+                    },
+                  ),
+                  
+                ],
+              );
+            },
+          );
+        },
       ),
     );
   }
@@ -169,6 +201,262 @@ class TagsState extends State<Tags> with RouteAware {
     );
   }
 
+  void deleteCategory(category) async {
+    setState(() {
+      tags.remove(category);
+      saveTags();
+    });
+  }
+
+  void deleteTagInCategory(String category, String tag) async {
+    setState(() {
+      if (tags.containsKey(category) && tags[category].keys.contains(tag)) {
+        setState(() {
+          tags[category].remove(tag);
+          saveTags();       
+        });
+      }
+      
+    });
+  }
+
+  bool addCategoryFromController(TextEditingController controller) {
+    if (controller.text != '' && !tags.keys.contains(controller.text)) {
+      setState(() {
+        tags[controller.text] = {};
+        saveTags();
+      });
+      return true;
+    }
+    return false;
+  }
+
+  bool updateTagFromController(TextEditingController controller, String category) {
+    if (controller.text != category && controller.text != '') {
+      setState(() {
+        tags[controller.text] = tags[category];
+        tags.remove(category);
+        saveTags();
+      });
+      return true;
+    }
+    return false;
+  }
+
+  bool updateTagInCategoryFromController(TextEditingController controller, String category, String tag) {
+    if (controller.text != '' && !tags[category].keys.contains(controller.text)) {
+      setState(() {
+        tags[category][controller.text] = tags[category][tag];
+        tags[category].remove(tag);
+        saveTags();
+      });
+      return true;
+    }
+    return false;
+  }
+
+  bool addTagFromController(TextEditingController controller, String category) {
+    if (controller.text != '' && !tags[category].keys.contains(controller.text)) {
+      setState(() {
+        tags[category][controller.text] = true;
+        saveTags();
+      });
+      return true;
+    }
+    return false;
+  }
+
+  Widget editableTagCategory(String category, bool active, update) {
+    var totalTags = tags[category].length.toString();
+    String activeCount = '';
+    if (totalTags != '0') {
+      var activeTags = tags[category].values.where((status) {return status == true;}).length.toString();
+      activeCount = activeTags + '/' + totalTags;
+    }
+    TextEditingController t = new TextEditingController();
+    TextEditingController newTag = new TextEditingController();
+    t.text = category;
+    return new Slidable(
+      delegate: new SlidableScrollDelegate(),
+      child: new ListTile(
+        title: Text(
+          category,
+          style: _biggestFont,
+        ),
+        leading: totalTags != '0' ? Text(
+          activeCount
+        ) : null,
+        trailing: totalTags != '0' ? new Icon(   // Add the lines from here... 
+          active ? Icons.visibility : Icons.visibility_off,
+          color: active ? Colors.blue : null,
+        ) : null,
+        onTap: () {      // Add 9 lines from here...
+          setState(() {
+            update();  
+          });
+        },
+        onLongPress: () {
+          editCategory(category);
+        },
+      ),
+      actions: <Widget>[
+         new IconSlideAction(
+          caption: 'Delete',
+          color: Colors.red,
+          icon: Icons.delete_forever,
+          onTap: () {
+            deleteCategory(category);
+          },
+        ),
+        new IconSlideAction(
+          caption: 'Add',
+          color: Colors.blue,
+          icon: Icons.add,
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (BuildContext contxt) {
+                return AlertDialog(
+                  title: Text('New Tag'),
+                  content: TextField(
+                    controller: newTag,
+                    onEditingComplete: () {
+                      addTagFromController(newTag, category);
+                      Navigator.of(contxt).pop();
+                    },
+                  ),
+                  actions: <Widget>[
+                    FlatButton(
+                      onPressed: () {
+                        Navigator.of(contxt).pop();
+                      },
+                      child: Text("Cancel"),
+                    ),
+                    FlatButton(
+                      child: Text("Save"),
+                      onPressed: () {
+                        addTagFromController(newTag, category);
+                        Navigator.of(contxt).pop();
+                      },
+                    ),
+                    
+                  ],
+                  );
+              }
+            );
+          },
+        ),
+      ],
+      secondaryActions: <Widget>[
+        new IconSlideAction(
+          caption: 'Rename',
+          color: Colors.green,
+          icon: Icons.edit,
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (BuildContext contxt) {
+                return AlertDialog(
+                  title: Text('Edit Category'),
+                  content: TextField(
+                    key: Key(category),
+                    controller: t,
+                    onEditingComplete: () {
+                      updateTagFromController(t, category);
+                      Navigator.of(contxt).pop();
+                    },
+                  ),
+                  actions: <Widget>[
+                    FlatButton(
+                      onPressed: () {
+                        Navigator.of(contxt).pop();
+                      },
+                      child: Text("Cancel"),
+                    ),
+                    FlatButton(
+                      child: Text("Save"),
+                      onPressed: () {
+                        updateTagFromController(t, category);
+                        Navigator.of(contxt).pop();
+                      },
+                    ),
+                    
+                  ],
+                  );
+              }
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget editableTagInCategory(String tag, bool active, String category, update) {
+    TextEditingController t = new TextEditingController();
+    t.text = tag;
+    return new Slidable(
+      delegate: new SlidableScrollDelegate(),
+      child: new ListTile(
+        title: Text(
+          tag,
+        ),
+        leading: new Icon(   // Add the lines from here... 
+          active ? Icons.check_box : Icons.check_box_outline_blank,
+          color: active ? Colors.blue : Colors.blue,
+        ),
+        onTap: () {      // Add 9 lines from here...
+          setState(() {
+            update();  
+          });
+        },
+      ),
+      actions: <Widget>[
+         new IconSlideAction(
+          caption: 'Delete',
+          color: Colors.red,
+          icon: Icons.delete_forever,
+          onTap: () {
+            deleteTagInCategory(category, tag);
+          },
+        ),
+      ],
+      secondaryActions: <Widget>[
+        new IconSlideAction(
+          caption: 'Rename',
+          color: Colors.green,
+          icon: Icons.edit,
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (BuildContext contxt) {
+                return AlertDialog(
+                  title: Text('Edit Tag'),
+                  content: TextField(
+                    key: Key(category),
+                    controller: t,
+                    onEditingComplete: () {
+                      updateTagInCategoryFromController(t, category, tag);
+                      Navigator.of(contxt).pop();
+                    },
+                  ),
+                  actions: <Widget>[
+                    FlatButton(
+                      child: Text("Save"),
+                      onPressed: () {
+                        updateTagInCategoryFromController(t, category, tag);
+                        Navigator.of(contxt).pop();
+                      },
+                    )
+                  ],
+                  );
+              }
+            );
+          },
+        ),
+      ],
+    );
+  }
+
   Widget tagInCategory(String category, bool active, update) {
     return ListTile(
       title: Text(
@@ -198,6 +486,7 @@ class TagsState extends State<Tags> with RouteAware {
           },
         )
       );
+      fields.add(Divider());
     
     tags.forEach((k, v) {
       bool active = activeTags.contains(k);
@@ -208,13 +497,13 @@ class TagsState extends State<Tags> with RouteAware {
           activeTags.add(k);
         }
       }
-      fields.add(tagCategory(k, active, updateCategory));
+      fields.add(editableTagCategory(k, active, updateCategory));
       if (active) {
         v.forEach((tag, status) {
           void updateTag() {
             tags[k][tag] = !tags[k][tag];
           }
-          fields.add(tagInCategory(tag, status, updateTag));
+          fields.add(editableTagInCategory(tag, status, k, updateTag));
         });
       }
       fields.add(Divider());
